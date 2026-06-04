@@ -1,0 +1,14 @@
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "SnapAPI",
+  "applicationCategory": "DeveloperApplication",
+  "description": "Website Intelligence API — screenshots, metadata extraction, and social previews for any URL.",
+  "url": "https://snapapi2.loca.lt",
+  "operatingSystem": "Linux, macOS, Windows",
+  "offers": [
+    { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD" },
+    { "@type": "Offer", "name": "Pro", "price": "29", "priceCurrency": "USD" }
+  ],
+  "featureList": "Screenshot API, Metadata extraction, Social preview generation, OG tag detection"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "snapapi",
+  "version": "1.0.0",
+  "description": "Website Intelligence API — screenshots, metadata, and social previews",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "postinstall": "npx playwright install chromium"
+  },
+  "keywords": ["screenshot", "api", "metadata", "og-image"],
+  "author": "SnapAPI",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "playwright": "^1.60.0",
+    "uuid": "^14.0.0"
+  }
+}

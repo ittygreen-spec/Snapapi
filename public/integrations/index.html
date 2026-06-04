@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Integrations — SnapAPI</title>
+  <meta name="description" content="Use SnapAPI with GitHub Actions, Vercel, Slack, and more.">
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;line-height:1.6;}
+    .container{max-width:900px;margin:0 auto;padding:20px;}
+    nav{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid #1a1a2e;margin-bottom:32px;}
+    .logo{font-size:1.3rem;font-weight:700;color:#fff;text-decoration:none;}
+    .logo span{color:#6c5ce7;}
+    nav a{color:#a0a0b0;text-decoration:none;margin-left:20px;font-size:0.9rem;}
+    h1{font-size:2rem;margin-bottom:8px;color:#fff;}
+    .sub{color:#888;margin-bottom:32px;}
+    .card{background:#12121a;border:1px solid #1a1a2e;border-radius:12px;padding:24px;margin-bottom:16px;}
+    .card h3{color:#fff;margin-bottom:8px;}
+    .card p{color:#888;font-size:0.9rem;margin-bottom:12px;}
+    .code-block{background:#0d0d15;border:1px solid #1a1a2e;border-radius:8px;padding:16px;font-family:monospace;font-size:0.85rem;overflow-x:auto;}
+    .btn{padding:10px 22px;border-radius:8px;font-weight:600;font-size:0.9rem;cursor:pointer;border:none;display:inline-block;text-decoration:none;}
+    .btn-primary{background:#6c5ce7;color:#fff;}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <a href="/" class="logo"><span>Snap</span>API</a>
+      <div><a href="/">Home</a><a href="/docs">Docs</a><a href="/admin.html">Dashboard</a></div>
+    </nav>
+
+    <h1>🔌 Integrations</h1>
+    <p class="sub">Use SnapAPI everywhere your code runs.</p>
+
+    <div class="card">
+      <h3>📦 GitHub Actions — Auto-Generate Social Cards on PR</h3>
+      <p>Generate social preview images for your site when you open a pull request.</p>
+      <div class="code-block">
+name: Generate Social Preview<br>
+on: [pull_request]<br>
+jobs:<br>
+&nbsp;&nbsp;preview:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;runs-on: ubuntu-latest<br>
+&nbsp;&nbsp;&nbsp;&nbsp;steps:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- run: |<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;curl -H "X-Api-Key: ${{ secrets.SNAPAPI_KEY }}" \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"https://snapapi.loca.lt/api/screenshot?url=${{ args.url }}" \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-o preview.png
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⚡ Vercel — Dynamic OG Images</h3>
+      <p>Generate OG images at build time with a serverless function.</p>
+      <div class="code-block">
+// api/og.ts — Vercel Edge Function<br>
+export default async (req) => {<br>
+&nbsp;&nbsp;const url = new URL(req.url).searchParams.get('url');<br>
+&nbsp;&nbsp;const res = await fetch(`https://snapapi.loca.lt/api/screenshot?url=${url}&key=${process.env.SNAPAPI_KEY}`);<br>
+&nbsp;&nbsp;return new Response(res.body, { headers: { 'Content-Type': 'image/png' } });<br>
+};
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>💬 Slack — Preview Links in Messages</h3>
+      <p>Use SnapAPI metadata to enrich Slack link unfurls.</p>
+      <div class="code-block">
+# Slack slash command handler<br>
+curl -H "X-Api-Key: $KEY" \<br>
+&nbsp;&nbsp;"https://snapapi.loca.lt/api/metadata?url=$URL"<br>
+# Returns JSON with title, description, og:image
+      </div>
+    </div>
+
+    <div class="card" style="text-align:center;border-color:#6c5ce7;">
+      <h3>🚀 Get started in 30 seconds</h3>
+      <p>100 free credits. No credit card.</p>
+      <a href="/admin.html" class="btn btn-primary">Get Your API Key →</a>
+    </div>
+  </div>
+</body>
+</html>

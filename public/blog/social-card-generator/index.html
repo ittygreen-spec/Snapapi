@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>How to Auto-Generate Social Cards for Your Blog — SnapAPI Blog</title>
+<meta name="description" content="Learn how to automatically generate social preview cards for your blog posts using SnapAPI. Step-by-step guide with code examples.">
+<meta property="og:title" content="How to Auto-Generate Social Cards for Your Blog"><meta property="og:description" content="Generate beautiful social preview images automatically.">
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;line-height:1.8;max-width:720px;margin:0 auto;padding:20px;}h1{color:#fff;font-size:2rem;}h2{color:#fff;margin-top:32px;}p{color:#b0b0c0;margin:16px 0;}.code{background:#0d0d15;border:1px solid #1a1a2e;border-radius:8px;padding:16px;font-family:monospace;font-size:0.85rem;overflow-x:auto;margin:12px 0;}nav{margin-bottom:32px;}nav a{color:#6c5ce7;text-decoration:none;}.tag{display:inline-block;background:rgba(108,92,231,0.15);color:#6c5ce7;padding:4px 12px;border-radius:20px;font-size:0.8rem;margin-right:4px;}</style></head>
+<body>
+<nav><a href="/">← Home</a> / <a href="/blog">Blog</a></nav>
+<h1>How to Auto-Generate Social Cards for Your Blog</h1>
+<p class="tag">SEO</p> <p class="tag">Tutorial</p> <p class="tag">Automation</p>
+<p>When you share a blog post on Twitter or LinkedIn, the preview image is the first thing people see. Without a proper social card, your link looks like a plain text URL — and nobody clicks that.</p>
+
+<h2>The Problem</h2>
+<p>Most static site generators (Hugo, Jekyll, Astro) don't generate social preview images. You'd have to design each one manually in Canva or Photoshop. That doesn't scale.</p>
+
+<h2>The Solution</h2>
+<p>SnapAPI lets you generate a screenshot of any page with a single HTTP call. Use it as a build step in your CI/CD pipeline.</p>
+
+<h2>GitHub Actions Example</h2>
+<div class="code">
+name: Generate Social Cards<br>
+on: [push]<br>
+jobs:<br>
+&nbsp;&nbsp;cards:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;runs-on: ubuntu-latest<br>
+&nbsp;&nbsp;&nbsp;&nbsp;steps:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- uses: actions/checkout@v4<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;- name: Generate preview<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;run: |<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for file in content/blog/*.md; do<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;url="https://mysite.com/$(basename $file .md)"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;curl -H "X-Api-Key: ${{ secrets.SNAPAPI_KEY }}" \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"https://snapapi.loca.lt/api/screenshot?url=$url&width=1200&height=630" \<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-o "static/images/cards/$(basename $file .md).png"<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;done
+</div>
+
+<h2>Add OG Tags Automatically</h2>
+<p>Use the /api/metadata endpoint to fetch your own page's metadata and inject it into your site's &lt;head&gt; at build time.</p>
+
+<div class="code">
+curl -H "X-Api-Key: YOUR_KEY" \<br>
+&nbsp;&nbsp;"https://snapapi.loca.lt/api/metadata?url=https://mysite.com/my-post"<br>
+# Returns: title, description, og:image, favicon...
+</div>
+
+<h2>Why This Works</h2>
+<p>Social platforms cache OG images aggressively. Once you set them, your links look professional forever. SnapAPI handles the heavy lifting — you just call an API.</p>
+
+<p><a href="/admin.html" style="color:#6c5ce7;">Get your free API key →</a></p>
+</body>
+</html>

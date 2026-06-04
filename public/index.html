@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapAPI — Website Intelligence API</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; line-height: 1.6; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+    nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a1a2e; }
+    .logo { font-size: 1.5rem; font-weight: 700; color: #fff; }
+    .logo span { color: #6c5ce7; }
+    nav a { color: #a0a0b0; text-decoration: none; margin-left: 24px; font-size: 0.9rem; }
+    nav a:hover { color: #fff; }
+    .btn { display: inline-block; padding: 12px 28px; border-radius: 8px; font-weight: 600; text-decoration: none; font-size: 0.95rem; cursor: pointer; border: none; }
+    .btn-primary { background: #6c5ce7; color: #fff; }
+    .btn-primary:hover { background: #5a4bd1; }
+    .btn-secondary { background: rgba(108, 92, 231, 0.15); color: #6c5ce7; border: 1px solid rgba(108, 92, 231, 0.3); }
+    .btn-secondary:hover { background: rgba(108, 92, 231, 0.25); }
+
+    .hero { text-align: center; padding: 100px 0 60px; }
+    .hero h1 { font-size: 3.2rem; font-weight: 800; margin-bottom: 16px; color: #fff; }
+    .hero h1 span { background: linear-gradient(135deg, #6c5ce7, #a29bfe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .hero p { font-size: 1.2rem; color: #888; max-width: 650px; margin: 0 auto 32px; }
+    .hero .btns { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    .features { padding: 80px 0; }
+    .features h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; color: #fff; }
+    .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .feature-card { background: #12121a; border: 1px solid #1a1a2e; border-radius: 12px; padding: 28px; }
+    .feature-card .icon { font-size: 2rem; margin-bottom: 12px; }
+    .feature-card h3 { font-size: 1.15rem; margin-bottom: 8px; color: #fff; }
+    .feature-card p { color: #888; font-size: 0.9rem; }
+
+    .pricing { padding: 60px 0 100px; }
+    .pricing h2 { text-align: center; font-size: 2rem; margin-bottom: 48px; color: #fff; }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+    .plan { background: #12121a; border: 1px solid #1a1a2e; border-radius: 12px; padding: 32px; text-align: center; }
+    .plan.featured { border-color: #6c5ce7; position: relative; }
+    .plan.featured::before { content: 'Popular'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: #6c5ce7; color: #fff; padding: 4px 16px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+    .plan .price { font-size: 2.5rem; font-weight: 800; color: #fff; margin: 16px 0; }
+    .plan .price span { font-size: 1rem; color: #888; }
+    .plan ul { list-style: none; margin: 20px 0; text-align: left; }
+    .plan ul li { padding: 8px 0; font-size: 0.9rem; color: #a0a0b0; }
+    .plan ul li::before { content: '✓ '; color: #6c5ce7; }
+
+    .docs { padding: 60px 0; border-top: 1px solid #1a1a2e; }
+    .docs h2 { font-size: 2rem; margin-bottom: 32px; color: #fff; }
+    .code-block { background: #0d0d15; border: 1px solid #1a1a2e; border-radius: 8px; padding: 20px; margin: 12px 0; font-family: 'SF Mono', monospace; font-size: 0.85rem; overflow-x: auto; }
+    .code-block .comment { color: #6c6c8a; }
+    .code-block .cmd { color: #a29bfe; }
+    .endpoint { display: flex; align-items: center; gap: 12px; margin: 16px 0; padding: 12px 16px; background: #12121a; border-radius: 8px; border: 1px solid #1a1a2e; }
+    .endpoint .method { padding: 4px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: 700; color: #fff; }
+    .method.get { background: #27ae60; }
+    .endpoint .path { font-family: monospace; color: #a0a0b0; }
+    .endpoint .desc { margin-left: auto; font-size: 0.85rem; color: #888; }
+
+    .demo { padding: 60px 0; border-top: 1px solid #1a1a2e; }
+    .demo h2 { font-size: 2rem; margin-bottom: 16px; color: #fff; }
+    .demo p { color: #888; margin-bottom: 24px; }
+    .demo-form { display: flex; gap: 12px; flex-wrap: wrap; }
+    .demo-form input { flex: 1; min-width: 200px; padding: 12px 16px; border-radius: 8px; border: 1px solid #1a1a2e; background: #12121a; color: #fff; font-size: 0.95rem; }
+    .demo-form input:focus { outline: none; border-color: #6c5ce7; }
+    .demo-result { margin-top: 20px; display: none; }
+    .demo-result img { max-width: 100%; border-radius: 8px; border: 1px solid #1a1a2e; }
+
+    .admin-link { padding: 40px 0 80px; text-align: center; border-top: 1px solid #1a1a2e; }
+    .admin-link p { color: #888; margin-bottom: 16px; }
+
+    footer { text-align: center; padding: 32px 0; border-top: 1px solid #1a1a2e; color: #666; font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <nav>
+      <div class="logo"><span>Snap</span>API</div>
+      <div>
+        <a href="#features">Features</a>
+        <a href="#pricing">Pricing</a>
+        <a href="/tools/preview">Preview Tool</a>
+        <a href="/blog">Blog</a>
+        <a href="#docs">Docs</a>
+        <a href="/admin.html" class="btn btn-secondary" style="margin-left:16px">Dashboard →</a>
+      </div>
+    </nav>
+
+    <section class="hero">
+      <h1>Website Intelligence,<br><span>One API Call Away</span></h1>
+      <p>Screenshots, metadata extraction, and social previews for any URL. The simplest API for developers who need web data.</p>
+      <div class="btns">
+        <a href="#demo" class="btn btn-primary">Try It Free →</a>
+        <a href="#docs" class="btn btn-secondary">Read the Docs</a>
+      </div>
+    </section>
+
+    <section id="features" class="features">
+      <h2>What You Get</h2>
+      <div class="feature-grid">
+        <div class="feature-card">
+          <div class="icon">📸</div>
+          <h3>Pixel-Perfect Screenshots</h3>
+          <p>Full-page or viewport captures at 2x resolution. PNG or JPEG. Custom viewport sizes.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔍</div>
+          <h3>Metadata Extraction</h3>
+          <p>OG tags, titles, descriptions, favicons, canonical URLs — structured JSON in one call.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">⚡</div>
+          <h3>Blazing Fast</h3>
+          <p>Headless Chromium under the hood. Sub-second response for cached pages.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🛠️</div>
+          <h3>Simple REST API</h3>
+          <p>One endpoint for screenshots, one for metadata. No SDK needed — just HTTP.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📊</div>
+          <h3>Usage Tracking</h3>
+          <p>Monitor your credits and usage with the dashboard. Upgrade anytime.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🔐</div>
+          <h3>API Key Auth</h3>
+          <p>Secure token-based authentication. Create multiple keys for different projects.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="pricing">
+      <h2>Simple Pricing</h2>
+      <div class="pricing-grid">
+        <div class="plan">
+          <h3>Free</h3>
+          <div class="price">$0<span>/month</span></div>
+          <ul>
+            <li>100 credits/month</li>
+            <li>Screenshot API</li>
+            <li>Metadata API</li>
+            <li>Basic rate limiting</li>
+          </ul>
+          <a href="#demo" class="btn btn-secondary">Get Started</a>
+        </div>
+        <div class="plan featured">
+          <h3>Pro</h3>
+          <div class="price">$29<span>/month</span></div>
+          <ul>
+            <li>10,000 credits/month</li>
+            <li>Screenshot API</li>
+            <li>Metadata API</li>
+            <li>Priority support</li>
+            <li>Custom viewport sizes</li>
+            <li>Full-page screenshots</li>
+          </ul>
+          <a href="#" class="btn btn-primary" onclick="alert('Email hello@snapapi.dev to upgrade!')">Subscribe</a>
+        </div>
+        <div class="plan">
+          <h3>Enterprise</h3>
+          <div class="price">Custom</div>
+          <ul>
+            <li>Unlimited credits</li>
+            <li>SLAs</li>
+            <li>Dedicated support</li>
+            <li>Custom integrations</li>
+            <li>Self-hosted option</li>
+          </ul>
+          <a href="#" class="btn btn-secondary" onclick="alert('Email hello@snapapi.dev to get started!')">Contact Us</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="demo" class="demo">
+      <h2>Try It Now</h2>
+      <p>Enter any URL to see what SnapAPI returns. This uses a demo API key.</p>
+      <div class="demo-form">
+        <input type="url" id="demoUrl" placeholder="https://example.com" value="https://news.ycombinator.com">
+        <button class="btn btn-primary" onclick="tryDemo()">Capture →</button>
+      </div>
+      <div class="demo-result" id="demoResult">
+        <img id="demoImage" alt="Screenshot preview">
+        <p style="margin-top:12px;color:#888;font-size:0.85rem" id="demoMeta"></p>
+      </div>
+    </section>
+
+    <section id="docs" class="docs">
+      <h2>Quick Start</h2>
+      <p style="color:#888;margin-bottom:24px;">Get your API key and start making requests.</p>
+
+      <h3 style="color:#fff;margin-bottom:12px;">1. Get your API key</h3>
+      <p style="color:#888;margin-bottom:8px;">Sign up in the dashboard to generate a key.</p>
+
+      <h3 style="color:#fff;margin-bottom:12px;margin-top:24px;">2. Take a screenshot</h3>
+      <div class="code-block">
+        <span class="cmd">GET</span> /api/screenshot?url={url}&width=1280&height=720<br>
+        <span class="comment"># Response: image/png</span><br><br>
+        curl -H "X-Api-Key: your_key" \<br>
+        &nbsp;&nbsp;"https://your-host/api/screenshot?url=https://example.com" \<br>
+        &nbsp;&nbsp;-o screenshot.png
+      </div>
+
+      <h3 style="color:#fff;margin-bottom:12px;margin-top:24px;">3. Extract metadata</h3>
+      <div class="code-block">
+        <span class="cmd">GET</span> /api/metadata?url={url}<br>
+        <span class="comment"># Response: application/json</span><br><br>
+        curl -H "X-Api-Key: your_key" \<br>
+        &nbsp;&nbsp;"https://your-host/api/metadata?url=https://example.com"
+      </div>
+
+      <h3 style="color:#fff;margin-bottom:12px;margin-top:24px;">Endpoints</h3>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/api/screenshot?url=&width=&height=&full=&format=</span>
+        <span class="desc">Returns PNG/JPEG image</span>
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/api/metadata?url=</span>
+        <span class="desc">Returns JSON with OG tags, title, etc.</span>
+      </div>
+      <div class="endpoint">
+        <span class="method get">GET</span>
+        <span class="path">/api/usage</span>
+        <span class="desc">Check your credit usage</span>
+      </div>
+    </section>
+
+    <section class="admin-link">
+      <p>Manage your keys, monitor usage, and upgrade your plan.</p>
+      <a href="/admin.html" class="btn btn-primary">Open Dashboard →</a>
+    </section>
+  </div>
+
+  <footer>
+    <div class="container">
+      SnapAPI © 2026 — Built by AI, for developers.
+    </div>
+  </footer>
+
+  <script>
+    async function tryDemo() {
+      const url = document.getElementById('demoUrl').value;
+      if (!url) return alert('Enter a URL');
+      
+      const result = document.getElementById('demoResult');
+      const img = document.getElementById('demoImage');
+      const meta = document.getElementById('demoMeta');
+      
+      result.style.display = 'block';
+      img.src = '/api/demo-screenshot?url=' + encodeURIComponent(url) + '&t=' + Date.now();
+      
+      try {
+        const resp = await fetch('/api/metadata?url=' + encodeURIComponent(url) + '&key=');
+        const data = await resp.json();
+        if (data.success) {
+          meta.textContent = '📄 ' + (data.data.title || 'No title') + ' — ' + (data.data.description?.substring(0, 100) || '');
+        }
+      } catch(e) {
+        meta.textContent = 'Screenshot captured';
+      }
+    }
+  </script>
+</body>
+</html>

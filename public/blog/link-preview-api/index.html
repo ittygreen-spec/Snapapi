@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Building a Link Previewer in 5 Lines of Python — SnapAPI Blog</title>
+<meta name="description" content="Build a Slack-style link previewer with Python and SnapAPI in under 30 seconds.">
+<meta property="og:title" content="Building a Link Previewer in Python"><meta property="og:description" content="Slack-style unfurls in 5 lines of Python.">
+<style>body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0a0a0f;color:#e0e0e0;line-height:1.8;max-width:720px;margin:0 auto;padding:20px;}h1{color:#fff;font-size:2rem;}h2{color:#fff;margin-top:32px;}p{color:#b0b0c0;margin:16px 0;}.code{background:#0d0d15;border:1px solid #1a1a2e;border-radius:8px;padding:16px;font-family:monospace;font-size:0.85rem;overflow-x:auto;margin:12px 0;}nav{margin-bottom:32px;}nav a{color:#6c5ce7;text-decoration:none;}.tag{display:inline-block;background:rgba(108,92,231,0.15);color:#6c5ce7;padding:4px 12px;border-radius:20px;font-size:0.8rem;margin-right:4px;}</style></head>
+<body>
+<nav><a href="/">← Home</a> / <a href="/blog">Blog</a></nav>
+<h1>Building a Link Previewer in 5 Lines of Python</h1>
+<p class="tag">Python</p> <p class="tag">Tutorial</p> <p class="tag">API</p>
+<p>Ever wonder how Slack, WhatsApp, or Telegram generate those rich link previews? They extract Open Graph metadata from the target URL. Here's how to do it yourself.</p>
+
+<h2>The Code</h2>
+<div class="code">
+import requests<br><br>
+url = "https://news.ycombinator.com"<br>
+headers = {"X-Api-Key": "demo"}<br>
+resp = requests.get(<br>
+&nbsp;&nbsp;"https://snapapi.loca.lt/api/metadata",<br>
+&nbsp;&nbsp;params={"url": url},<br>
+&nbsp;&nbsp;headers=headers<br>
+)<br>
+print(resp.json()["data"])<br>
+# {'title': 'Hacker News', 'favicon': 'y18.svg', 'url': 'https://news.ycombinator.com/'}
+</div>
+
+<h2>What You Get</h2>
+<p>The API returns title, description, Open Graph image, favicon, canonical URL — everything you need for a rich link preview.</p>
+
+<h2>Going Further: Add Screenshots</h2>
+<div class="code">
+# Save a screenshot<br>
+img = requests.get(<br>
+&nbsp;&nbsp;"https://snapapi.loca.lt/api/screenshot",<br>
+&nbsp;&nbsp;params={"url": url, "width": 1200, "height": 630},<br>
+&nbsp;&nbsp;headers=headers<br>
+)<br>
+with open("preview.png", "wb") as f:<br>
+&nbsp;&nbsp;f.write(img.content)
+</div>
+
+<p>That's it. You now have a full link preview system in ~8 lines of Python. SnapAPI handles the browser automation.</p>
+
+<p><a href="/admin.html" style="color:#6c5ce7;">Get your free API key →</a></p>
+</body>
+</html>

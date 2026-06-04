@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SnapAPI — Dashboard</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0f; color: #e0e0e0; line-height: 1.6; }
+    .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+    
+    header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1a1a2e; margin-bottom: 32px; }
+    .logo { font-size: 1.3rem; font-weight: 700; color: #fff; text-decoration: none; }
+    .logo span { color: #6c5ce7; }
+    header a { color: #a0a0b0; text-decoration: none; font-size: 0.9rem; }
+    header a:hover { color: #fff; }
+
+    h1 { font-size: 1.8rem; margin-bottom: 8px; }
+    p.sub { color: #888; margin-bottom: 24px; }
+
+    .card { background: #12121a; border: 1px solid #1a1a2e; border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .card h2 { font-size: 1.2rem; margin-bottom: 16px; color: #fff; }
+
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat { background: #12121a; border: 1px solid #1a1a2e; border-radius: 8px; padding: 20px; text-align: center; }
+    .stat .num { font-size: 2rem; font-weight: 800; color: #6c5ce7; }
+    .stat .label { color: #888; font-size: 0.85rem; margin-top: 4px; }
+
+    .key-input { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .key-input input { flex: 1; min-width: 200px; padding: 10px 16px; border-radius: 8px; border: 1px solid #1a1a2e; background: #0d0d15; color: #fff; font-size: 0.95rem; }
+    .key-input input:focus { outline: none; border-color: #6c5ce7; }
+
+    .btn { padding: 10px 24px; border-radius: 8px; font-weight: 600; font-size: 0.9rem; cursor: pointer; border: none; display: inline-block; text-decoration: none; }
+    .btn-primary { background: #6c5ce7; color: #fff; }
+    .btn-primary:hover { background: #5a4bd1; }
+    .btn-secondary { background: rgba(108, 92, 231, 0.15); color: #6c5ce7; border: 1px solid rgba(108, 92, 231, 0.3); }
+    .btn-danger { background: rgba(231, 76, 60, 0.15); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.3); }
+    .btn-small { padding: 6px 14px; font-size: 0.8rem; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 12px 8px; border-bottom: 1px solid #1a1a2e; font-size: 0.9rem; }
+    th { color: #888; font-weight: 600; font-size: 0.8rem; text-transform: uppercase; }
+    td { color: #c0c0d0; }
+    .key-text { font-family: monospace; font-size: 0.8rem; background: #0d0d15; padding: 2px 8px; border-radius: 4px; }
+
+    .usage-bar { height: 6px; background: #1a1a2e; border-radius: 3px; margin: 8px 0; overflow: hidden; }
+    .usage-bar .fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #6c5ce7, #a29bfe); transition: width 0.3s; }
+
+    .tab-bar { display: flex; gap: 4px; margin-bottom: 20px; background: #12121a; border-radius: 8px; padding: 4px; }
+    .tab { padding: 8px 20px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; color: #888; border: none; background: none; }
+    .tab.active { background: #6c5ce7; color: #fff; }
+
+    .toast { position: fixed; bottom: 20px; right: 20px; background: #6c5ce7; color: #fff; padding: 12px 24px; border-radius: 8px; font-size: 0.9rem; display: none; }
+    
+    .loading { text-align: center; padding: 40px; color: #888; }
+
+    .hidden { display: none; }
+
+    input[type="text"] { width: 100%; padding: 10px 16px; border-radius: 8px; border: 1px solid #1a1a2e; background: #0d0d15; color: #fff; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="/" class="logo"><span>Snap</span>API</a>
+      <div>
+        <a href="/">← Back to Home</a>
+      </div>
+    </header>
+
+    <h1>Dashboard</h1>
+    <p class="sub">Enter your API key to view usage, manage keys, and upgrade.</p>
+
+    <div class="card">
+      <h2>🔑 Authenticate</h2>
+      <div class="key-input">
+        <input type="text" id="apiKeyInput" placeholder="Enter your API key">
+        <button class="btn btn-primary" onclick="authenticate()">Login</button>
+      </div>
+      <p style="color:#888;font-size:0.85rem;">Don't have a key? Use <strong>demo</strong> to try (limited credits).</p>
+    </div>
+
+    <div id="dashboard" class="hidden">
+      <div class="tab-bar">
+        <button class="tab active" onclick="switchTab('overview', this)">Overview</button>
+        <button class="tab" onclick="switchTab('keys', this)">API Keys</button>
+        <button class="tab" onclick="switchTab('usage', this)">Usage Log</button>
+      </div>
+
+      <div id="tab-overview">
+        <div class="stats" id="statsContainer">
+          <div class="stat"><div class="num" id="usedStat">-</div><div class="label">Credits Used</div></div>
+          <div class="stat"><div class="num" id="remainingStat">-</div><div class="label">Remaining</div></div>
+          <div class="stat"><div class="num" id="quotaStat">-</div><div class="label">Monthly Quota</div></div>
+          <div class="stat"><div class="num" id="planStat">-</div><div class="label">Plan</div></div>
+        </div>
+        <div class="card">
+          <h2>Usage</h2>
+          <div class="usage-bar"><div class="fill" id="usageBar" style="width:0%"></div></div>
+          <p style="color:#888;font-size:0.85rem;" id="usageText"></p>
+        </div>
+      </div>
+
+      <div id="tab-keys" class="hidden">
+        <div class="card">
+          <h2>Create API Key</h2>
+          <div class="key-input">
+            <input type="text" id="newKeyName" placeholder="Key name (e.g., 'Production')">
+            <button class="btn btn-primary" onclick="createKey()">Generate Key</button>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Your Keys</h2>
+          <table>
+            <thead><tr><th>Name</th><th>Key</th><th>Used</th><th>Limit</th><th>Created</th></tr></thead>
+            <tbody id="keysTable"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="tab-usage" class="hidden">
+        <div class="card">
+          <h2>Recent Requests</h2>
+          <table>
+            <thead><tr><th>Endpoint</th><th>URL</th><th>Status</th><th>Time</th></tr></thead>
+            <tbody id="usageTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let currentKey = localStorage.getItem('snapapi_key') || '';
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 3000);
+    }
+
+    function switchTab(tab, btn) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
+      document.getElementById('tab-' + tab).classList.remove('hidden');
+    }
+
+    async function apiGet(path) {
+      try {
+        const resp = await fetch(path, {
+          headers: { 'X-Api-Key': currentKey }
+        });
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({ error: resp.statusText }));
+          throw new Error(err.error || 'Request failed');
+        }
+        return resp;
+      } catch(e) {
+        showToast('Error: ' + e.message);
+        throw e;
+      }
+    }
+
+    async function authenticate() {
+      currentKey = document.getElementById('apiKeyInput').value.trim();
+      if (!currentKey) { showToast('Enter an API key'); return; }
+      
+      try {
+        const resp = await apiGet('/api/usage');
+        const data = await resp.json();
+        localStorage.setItem('snapapi_key', currentKey);
+        
+        document.getElementById('dashboard').classList.remove('hidden');
+        document.getElementById('usedStat').textContent = data.used;
+        document.getElementById('remainingStat').textContent = data.remaining;
+        document.getElementById('quotaStat').textContent = data.quota;
+        document.getElementById('planStat').textContent = data.plan || 'free';
+        
+        const pct = data.quota > 0 ? Math.min(100, (data.used / data.quota) * 100) : 0;
+        document.getElementById('usageBar').style.width = pct + '%';
+        document.getElementById('usageText').textContent = `${data.used} of ${data.quota} credits used (${Math.round(pct)}%)`;
+        
+        loadUsage();
+        loadKeys();
+        showToast('Authenticated!');
+      } catch(e) {
+        showToast('Invalid key');
+      }
+    }
+
+    async function loadUsage() {
+      try {
+        const resp = await apiGet('/api/usage');
+        const data = await resp.json();
+        const tbody = document.getElementById('usageTable');
+        tbody.innerHTML = (data.recent || []).map(r => 
+          `<tr><td>${r.endpoint}</td><td style="max-width:300px;overflow:hidden;text-overflow:ellipsis">${r.target_url || '-'}</td><td>${r.status}</td><td>${r.created_at}</td></tr>`
+        ).join('');
+      } catch(e) {}
+    }
+
+    async function loadKeys() {
+      try {
+        const resp = await apiGet('/api/keys');
+        const data = await resp.json();
+        const tbody = document.getElementById('keysTable');
+        tbody.innerHTML = data.map(k => 
+          `<tr><td>${k.name}</td><td><span class="key-text">${k.key || 'click to reveal'}</span></td><td>${k.used}</td><td>${k.quota}</td><td>${k.created_at}</td></tr>`
+        ).join('');
+      } catch(e) {}
+    }
+
+    async function createKey() {
+      const name = document.getElementById('newKeyName').value.trim();
+      if (!name) { showToast('Enter a name for the key'); return; }
+      
+      try {
+        const resp = await fetch('/api/keys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Api-Key': currentKey },
+          body: JSON.stringify({ name })
+        });
+        
+        if (!resp.ok) throw new Error('Failed to create key');
+        
+        const data = await resp.json();
+        showToast(`Key created: ${data.key}`);
+        document.getElementById('newKeyName').value = '';
+        loadKeys();
+      } catch(e) {
+        showToast('Error: ' + e.message);
+      }
+    }
+
+    // Auto-login if key stored
+    if (currentKey) {
+      document.getElementById('apiKeyInput').value = currentKey;
+      authenticate();
+    }
+  </script>
+</body>
+</html>
