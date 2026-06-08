@@ -7,7 +7,12 @@
     "start": "node server.js",
     "postinstall": "npx playwright install chromium"
   },
-  "keywords": ["screenshot", "api", "metadata", "og-image"],
+  "keywords": [
+    "screenshot",
+    "api",
+    "metadata",
+    "og-image"
+  ],
   "author": "SnapAPI",
   "license": "MIT",
   "type": "commonjs",
@@ -16,6 +21,7 @@
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "playwright": "^1.60.0",
+    "stripe": "^22.2.0",
     "uuid": "^14.0.0"
   }
 }

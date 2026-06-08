@@ -11,7 +11,20 @@ const app = express();
 const PORT = process.env.PORT || 3099;
 
 app.use(cors());
+
+// Stripe webhook route — MUST be before express.json() (needs raw body)
+const webhookRouter = express.Router();
+webhookRouter.post('/stripe-webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  // Forward to payments module's webhook handler
+  const payments = require('./payments');
+  payments.handleWebhook(req, res);
+});
+app.use('/api', webhookRouter);
+
 app.use(express.json());
+
+// Payment routes (non-webhook)
+app.use('/api/payments', paymentsRouter);
 
 // Static landing page
 app.use(express.static(path.join(__dirname, 'public')));

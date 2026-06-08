@@ -1,0 +1,7 @@
+{
+  "buildCommand": "npm install && npx playwright install chromium",
+  "outputDirectory": "public",
+  "installCommand": "npm install",
+  "devCommand": "node server.js",
+  "framework": null
+}
