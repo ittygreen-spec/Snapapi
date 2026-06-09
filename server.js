@@ -1,7 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { chromium } = require('playwright');
 const db = require('./db');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
@@ -52,20 +51,53 @@ function consumeQuota(req, res, next) {
   next();
 }
 
-// ─── Playwright browser pool ───
+// ─── Playwright browser pool with graceful fallback ───
 let browser;
+let browserAvailable = false;
+let browserError = null;
+
 async function getBrowser() {
-  if (!browser || !browser.isConnected()) {
+  if (browserAvailable && browser && browser.isConnected()) {
+    return browser;
+  }
+  return null; // Browser not available
+}
+
+async function initBrowser() {
+  try {
+    const { chromium } = require('playwright');
     browser = await chromium.launch({
       headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
     });
+    browserAvailable = true;
+    console.log('🚀 Playwright browser launched successfully');
+    return true;
+  } catch (err) {
+    browserAvailable = false;
+    browserError = err.message;
+    console.warn('⚠️ Playwright/Chromium not available:', err.message);
+    console.warn('   Screenshot and metadata endpoints will be unavailable.');
+    console.warn('   All other routes (dashboard, auth, payments, static pages) work normally.');
+    return false;
   }
-  return browser;
+}
+
+// ─── Middleware: require browser ───
+function requireBrowser(req, res, next) {
+  if (!browserAvailable) {
+    return res.status(503).json({
+      error: 'Browser engine unavailable',
+      detail: browserError || 'Chromium/Playwright is not installed or failed to launch',
+      resolution: 'Run: npx playwright install chromium --with-deps',
+      docs: '/docs'
+    });
+  }
+  next();
 }
 
 // ─── API: Take screenshot ───
-app.get('/api/screenshot', auth, consumeQuota, async (req, res) => {
+app.get('/api/screenshot', auth, consumeQuota, requireBrowser, async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
@@ -109,7 +141,7 @@ app.get('/api/screenshot', auth, consumeQuota, async (req, res) => {
 });
 
 // ─── API: Extract page metadata ───
-app.get('/api/metadata', auth, consumeQuota, async (req, res) => {
+app.get('/api/metadata', auth, consumeQuota, requireBrowser, async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
@@ -181,7 +213,7 @@ app.get('/api/keys', auth, (req, res) => {
 });
 
 // ─── Demo endpoint (no auth) ───
-app.get('/api/demo-screenshot', async (req, res) => {
+app.get('/api/demo-screenshot', requireBrowser, async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
@@ -209,7 +241,7 @@ app.get('/api/demo-screenshot', async (req, res) => {
 });
 
 // ─── Demo metadata (no auth for preview tool) ───
-app.get('/api/demo-metadata', async (req, res) => {
+app.get('/api/demo-metadata', requireBrowser, async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
   try {
@@ -300,15 +332,23 @@ app.post('/api/referral', (req, res) => {
 
 // ─── Health ───
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
+  res.json({
+    status: 'ok',
+    uptime: process.uptime(),
+    browser: browserAvailable ? 'available' : 'unavailable',
+    browser_error: browserError
+  });
 });
 
 // ─── Start ───
 app.use('/api/payments', paymentsRouter);
 async function start() {
-  // Launch browser on startup
-  await getBrowser();
-  console.log('🚀 Playwright browser launched');
+  // Try to launch browser, but don't crash if it fails
+  const browserOk = await initBrowser();
+  if (!browserOk) {
+    console.log('✅ Server started without browser. Screenshot endpoints will return 503.');
+    console.log('   Run: npx playwright install chromium --with-deps  to enable screenshots.');
+  }
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`📸 SnapAPI running on http://0.0.0.0:${PORT}`);
@@ -316,4 +356,10 @@ async function start() {
   });
 }
 
-start().catch(console.error);
+// Only start the server when not on Vercel
+if (!process.env.VERCEL) {
+  start().catch(console.error);
+}
+
+// Vercel serverless export
+module.exports = app;
