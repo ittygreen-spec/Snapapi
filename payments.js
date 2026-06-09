@@ -84,8 +84,8 @@ router.post('/checkout', auth, async (req, res) => {
         line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
         client_reference_id: req.token.id,
         metadata: { invoice_id: invoiceId, plan: plan_id, token_id: req.token.id },
-        success_url: `${req.headers.origin || 'https://snapapi-six.vercel.app'}/admin.html?upgraded=true`,
-        cancel_url: `${req.headers.origin || 'https://snapapi-six.vercel.app'}/upgrade/?cancelled=true`,
+        success_url: `${req.headers.origin || 'https://snapapi-production-50a0.up.railway.app'}/admin.html?upgraded=true`,
+        cancel_url: `${req.headers.origin || 'https://snapapi-production-50a0.up.railway.app'}/upgrade/?cancelled=true`,
       });
       db.prepare('INSERT INTO invoices (id, token_id, plan, amount, status, stripe_session_id) VALUES (?, ?, ?, ?, ?, ?)').run(invoiceId, req.token.id, plan_id, plan.price, 'pending', session.id);
       return res.json({ success: true, checkout_url: session.url, invoice_id: invoiceId });
