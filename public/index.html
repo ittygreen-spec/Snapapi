@@ -253,7 +253,7 @@
       img.src = '/api/demo-screenshot?url=' + encodeURIComponent(url) + '&t=' + Date.now();
       
       try {
-        const resp = await fetch('/api/metadata?url=' + encodeURIComponent(url) + '&key=');
+        const resp = await fetch('/api/demo-metadata?url=' + encodeURIComponent(url));
         const data = await resp.json();
         if (data.success) {
           meta.textContent = '📄 ' + (data.data.title || 'No title') + ' — ' + (data.data.description?.substring(0, 100) || '');
