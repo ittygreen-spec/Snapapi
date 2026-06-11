@@ -1,6 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const https = require('https');
+const http = require('http');
 const db = require('./db');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
@@ -14,7 +16,6 @@ app.use(cors());
 // Stripe webhook route — MUST be before express.json() (needs raw body)
 const webhookRouter = express.Router();
 webhookRouter.post('/stripe-webhook', express.raw({ type: 'application/json' }), (req, res) => {
-  // Forward to payments module's webhook handler
   const payments = require('./payments');
   payments.handleWebhook(req, res);
 });
@@ -51,131 +52,115 @@ function consumeQuota(req, res, next) {
   next();
 }
 
-// ─── Playwright browser pool with graceful fallback ───
-let browser;
-let browserAvailable = false;
-let browserError = null;
+// ─── ScreenshotOne API helper ───
+const SCREENSHOTONE_KEY = process.env.SCREENSHOTONE_KEY || 'c9f505548f6171340eff';
 
-async function getBrowser() {
-  if (browserAvailable && browser && browser.isConnected()) {
-    return browser;
-  }
-  return null; // Browser not available
+function takeScreenshot(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const params = new URLSearchParams({
+      access_key: SCREENSHOTONE_KEY,
+      url: url,
+      format: options.format || 'png',
+      viewport_width: String(options.width || 1280),
+      viewport_height: String(options.height || 720),
+      full_page: options.fullPage ? 'true' : 'false',
+      delay: String(options.delay || 0),
+      device_scale_factor: '1',
+      block_ads: 'true',
+      block_banners: 'true',
+      block_trackers: 'true',
+    });
+    
+    const apiUrl = `https://api.screenshotone.com/take?${params.toString()}`;
+    
+    https.get(apiUrl, (res) => {
+      if (res.statusCode !== 200) {
+        let body = '';
+        res.on('data', d => body += d);
+        res.on('end', () => reject(new Error(`ScreenshotOne API error ${res.statusCode}: ${body.substring(0, 200)}`)));
+        return;
+      }
+      const chunks = [];
+      res.on('data', d => chunks.push(d));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+    }).on('error', reject);
+  });
 }
 
-async function initBrowser() {
-  try {
-    const { chromium } = require('playwright');
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+// ─── Helper: fetch HTML and extract metadata ───
+function fetchMetadata(url) {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith('https') ? https : http;
+    const req = client.get(url, { timeout: 15000 }, (res) => {
+      let html = '';
+      res.on('data', d => html += d.toString());
+      res.on('end', () => {
+        const getMeta = (name) => {
+          const patterns = [
+            new RegExp(`<meta\\s+name=["']${name}["']\\s+content=["']([^"']*)["']`, 'i'),
+            new RegExp(`<meta\\s+property=["']og:${name}["']\\s+content=["']([^"']*)["']`, 'i'),
+            new RegExp(`<meta\\s+name=["']twitter:${name}["']\\s+content=["']([^"']*)["']`, 'i'),
+            new RegExp(`<meta\\s+content=["']([^"']*)["']\\s+name=["']${name}["']`, 'i'),
+            new RegExp(`<meta\\s+content=["']([^"']*)["']\\s+property=["']og:${name}["']`, 'i'),
+          ];
+          for (const p of patterns) {
+            const match = html.match(p);
+            if (match) return match[1];
+          }
+          return null;
+        };
+        const titleMatch = html.match(/<title>([^<]*)<\/title>/i);
+        const faviconMatch = html.match(/<link[^>]*rel=["'](?:shortcut )?icon["'][^>]*href=["']([^"']*)["']/i);
+        const canonicalMatch = html.match(/<link[^>]*rel=["']canonical["'][^>]*href=["']([^"']*)["']/i);
+        
+        resolve({
+          title: titleMatch ? titleMatch[1] : null,
+          description: getMeta('description'),
+          ogImage: getMeta('image'),
+          ogTitle: getMeta('title'),
+          ogDescription: getMeta('description'),
+          favicon: faviconMatch ? faviconMatch[1] : null,
+          url: url,
+          canonical: canonicalMatch ? canonicalMatch[1] : null,
+        });
+      });
     });
-    browserAvailable = true;
-    console.log('🚀 Playwright browser launched successfully');
-    return true;
-  } catch (err) {
-    browserAvailable = false;
-    browserError = err.message;
-    console.warn('⚠️ Playwright/Chromium not available:', err.message);
-    console.warn('   Screenshot and metadata endpoints will be unavailable.');
-    console.warn('   All other routes (dashboard, auth, payments, static pages) work normally.');
-    return false;
-  }
-}
-
-// ─── Middleware: require browser ───
-function requireBrowser(req, res, next) {
-  if (!browserAvailable) {
-    return res.status(503).json({
-      error: 'Browser engine unavailable',
-      detail: browserError || 'Chromium/Playwright is not installed or failed to launch',
-      resolution: 'Run: npx playwright install chromium --with-deps',
-      docs: '/docs'
-    });
-  }
-  next();
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+  });
 }
 
 // ─── API: Take screenshot ───
-app.get('/api/screenshot', auth, consumeQuota, requireBrowser, async (req, res) => {
+app.get('/api/screenshot', auth, consumeQuota, async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
   const width = parseInt(req.query.width) || 1280;
   const height = parseInt(req.query.height) || 720;
-  const fullPage = req.query.full === 'true';
-  const delay = parseInt(req.query.delay) || 1000;
   const format = req.query.format === 'jpeg' ? 'jpeg' : 'png';
+  const fullPage = req.query.full === 'true';
+  const delay = parseInt(req.query.delay) || 0;
 
   try {
-    const b = await getBrowser();
-    const context = await b.newContext({
-      viewport: { width, height },
-      deviceScaleFactor: 2,
-    });
-    const page = await context.newPage();
-
-    // Block ads and analytics for speed
-    await page.route('**/*.{png,jpg,jpeg,gif,svg,ico}', route => route.abort());
-    
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 30000 });
-    await page.waitForTimeout(delay);
-
-    const screenshot = await page.screenshot({ 
-      type: format === 'jpeg' ? 'jpeg' : 'png',
-      quality: format === 'jpeg' ? 85 : undefined,
-      fullPage 
-    });
-
-    await context.close();
-
-    // Log usage
+    const imageBuffer = await takeScreenshot(url, { width, height, format, fullPage, delay });
     db.prepare('INSERT INTO usage_log (api_key_id, endpoint, target_url, status) VALUES (?, ?, ?, ?)').run(req.token.id, '/api/screenshot', url, 200);
-
     res.set('Content-Type', format === 'jpeg' ? 'image/jpeg' : 'image/png');
     res.set('X-Credits-Remaining', String(req.token.quota - req.token.used - 1));
-    res.send(screenshot);
+    res.send(imageBuffer);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // ─── API: Extract page metadata ───
-app.get('/api/metadata', auth, consumeQuota, requireBrowser, async (req, res) => {
+app.get('/api/metadata', auth, consumeQuota, async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
   try {
-    const b = await getBrowser();
-    const context = await b.newContext();
-    const page = await context.newPage();
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-
-    const metadata = await page.evaluate(() => {
-      const getMeta = (name) => {
-        const el = document.querySelector(`meta[name="${name}"], meta[property="og:${name}"], meta[name="twitter:${name}"]`);
-        return el ? el.getAttribute('content') : null;
-      };
-      return {
-        title: document.title,
-        description: getMeta('description') || getMeta('description'),
-        ogImage: getMeta('image') || getMeta('image'),
-        ogTitle: getMeta('title') || getMeta('title'),
-        ogDescription: getMeta('description'),
-        favicon: document.querySelector('link[rel="icon"]')?.getAttribute('href') || null,
-        url: window.location.href,
-        canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || null,
-      };
-    });
-
-    await context.close();
+    const metadata = await fetchMetadata(url);
     db.prepare('INSERT INTO usage_log (api_key_id, endpoint, target_url, status) VALUES (?, ?, ?, ?)').run(req.token.id, '/api/metadata', url, 200);
-
-    res.json({ 
-      success: true, 
-      data: metadata,
-      credits_remaining: req.token.quota - req.token.used - 1 
-    });
+    res.json({ success: true, data: metadata, credits_remaining: req.token.quota - req.token.used - 1 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -213,7 +198,7 @@ app.get('/api/keys', auth, (req, res) => {
 });
 
 // ─── Demo endpoint (no auth) ───
-app.get('/api/demo-screenshot', requireBrowser, async (req, res) => {
+app.get('/api/demo-screenshot', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
 
@@ -223,49 +208,20 @@ app.get('/api/demo-screenshot', requireBrowser, async (req, res) => {
   }
 
   try {
-    const b = await getBrowser();
-    const context = await b.newContext({
-      viewport: { width: 800, height: 450 },
-      deviceScaleFactor: 1,
-    });
-    const page = await context.newPage();
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 25000 });
-    await page.waitForTimeout(1500);
-    const screenshot = await page.screenshot({ type: 'png' });
-    await context.close();
+    const imageBuffer = await takeScreenshot(url, { width: 800, height: 450, format: 'png' });
     res.set('Content-Type', 'image/png');
-    res.send(screenshot);
+    res.send(imageBuffer);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // ─── Demo metadata (no auth for preview tool) ───
-app.get('/api/demo-metadata', requireBrowser, async (req, res) => {
+app.get('/api/demo-metadata', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).json({ error: 'Missing ?url= parameter' });
   try {
-    const b = await getBrowser();
-    const context = await b.newContext();
-    const page = await context.newPage();
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 });
-    const metadata = await page.evaluate(() => {
-      const getMeta = (name) => {
-        const el = document.querySelector(`meta[name="${name}"], meta[property="og:${name}"], meta[name="twitter:${name}"]`);
-        return el ? el.getAttribute('content') : null;
-      };
-      return {
-        title: document.title,
-        description: getMeta('description') || getMeta('description'),
-        ogImage: getMeta('image') || getMeta('image'),
-        ogTitle: getMeta('title') || getMeta('title'),
-        ogDescription: getMeta('description'),
-        favicon: document.querySelector('link[rel="icon"]')?.getAttribute('href') || null,
-        url: window.location.href,
-        canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href') || null,
-      };
-    });
-    await context.close();
+    const metadata = await fetchMetadata(url);
     res.json({ success: true, data: metadata });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -335,21 +291,14 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     uptime: process.uptime(),
-    browser: browserAvailable ? 'available' : 'unavailable',
-    browser_error: browserError
+    screenshot_api: 'screenshotone'
   });
 });
 
 // ─── Start ───
 app.use('/api/payments', paymentsRouter);
 async function start() {
-  // Try to launch browser, but don't crash if it fails
-  const browserOk = await initBrowser();
-  if (!browserOk) {
-    console.log('✅ Server started without browser. Screenshot endpoints will return 503.');
-    console.log('   Run: npx playwright install chromium --with-deps  to enable screenshots.');
-  }
-
+  console.log('🚀 SnapAPI server starting (ScreenshotOne API)');
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`📸 SnapAPI running on http://0.0.0.0:${PORT}`);
     console.log(`📋 Health: http://localhost:${PORT}/health`);
