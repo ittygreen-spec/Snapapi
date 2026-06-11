@@ -48,6 +48,17 @@ if (count.c === 0) {
   console.log('✨ Demo token: demo');
 
   // If DEMO_API_KEY env var is set, ensure it exists as a token
+  if (process.env.DEMO_API_KEY) {
+    const demoKey = process.env.DEMO_API_KEY;
+    const existing = db.prepare('SELECT * FROM tokens WHERE id = ?').get(demoKey);
+    if (!existing) {
+      db.prepare('INSERT INTO tokens (id, plan, quota, used, email) VALUES (?, ?, ?, ?, ?)').run(demoKey, 'free', 500, 0, 'demo@snapapi.dev');
+      console.log('✨ Seeded DEMO_API_KEY:', demoKey);
+    }
+  }
+}
+
+// If DEMO_API_KEY env var is set, ensure it exists even if DB already seeded
 if (process.env.DEMO_API_KEY) {
   const demoKey = process.env.DEMO_API_KEY;
   const existing = db.prepare('SELECT * FROM tokens WHERE id = ?').get(demoKey);
