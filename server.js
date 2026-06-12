@@ -67,7 +67,6 @@ function takeScreenshot(url, options = {}) {
       delay: String(options.delay || 0),
       device_scale_factor: '1',
       block_ads: 'true',
-      Remove unsupported block_banners param
       block_trackers: 'true',
     });
     
